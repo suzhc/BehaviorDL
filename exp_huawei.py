@@ -9,8 +9,14 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # Load the dataset
 dataset = HuaweiDataset(path="/home/user/suzhao/BehaviorDL/dataset/Huawei", label_flag='energy')
 
+# Define the hyperparameters
 timesteps = 1441
 num_features = 4
+input_dim = timesteps * num_features
+hidden_dim = 128
+output_dim = 2
+lr = 0.0001
+epochs = 5
 
 # Split the dataset into training and validation sets
 train_size = int(0.8 * len(dataset))
@@ -23,12 +29,12 @@ val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
 
 
 # Initialize the model, criterion and optimizer
-input_dim = timesteps * num_features
-model = DLinear(input_dim=input_dim, hidden_dim=128, output_dim=2).to(device)  # Adjust input_dim accordingly
+model = DLinear(input_dim=input_dim, hidden_dim=hidden_dim, output_dim=output_dim)\
+    .to(device)  # Adjust input_dim accordingly
 criterion = torch.nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
 # Training loop
-epochs = 5
 for epoch in range(epochs):
     model.train()
     running_loss = 0.0
