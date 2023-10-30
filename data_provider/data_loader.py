@@ -23,11 +23,7 @@ class HuaweiDataset(Dataset):
         all_df: (num_samples * seq_len, num_columns) dataframe indexed by integer indices, with multiple rows corresponding to the same index (sample).
             Each row is a time step; Each column contains either metadata (e.g. timestamp) or a feature.
         feature_df: (num_samples * seq_len, feat_dim) dataframe; contains the subset of columns of `all_df` which correspond to selected features
-        feature_names: names of columns contained in `feature_df` (same as feature_df.columns)
-        all_IDs: (num_samples,) series of IDs contained in `all_df`/`feature_df` (same as all_df.index.unique() )
         labels_df: (num_samples, num_labels) pd.DataFrame of label(s) for each sample
-        max_seq_len: maximum sequence (time series) length. If None, script argument `max_seq_len` will be used.
-            (Moreover, script argument overrides this attribute)
     """
     def __init__(self, path, label_flag='emotion'):
         '''
@@ -42,11 +38,12 @@ class HuaweiDataset(Dataset):
         df = activity.merge(bloodoxygen, on=['externalid', 'recordtime', 'day'], how='outer')\
             .merge(heartrate, on=['externalid', 'recordtime', 'day'], how='outer').set_index(['externalid', 'day'])
         # 关于标签的处理，在read_ema()函数中进行（如删除分数在3-5之间的数据实例）
-        ema = self.read_ema()
-        self.all_df = pd.merge(df, ema, left_index=True, right_index=True, how='inner')
+        self.ema = self.read_ema()
+        self.all_df = pd.merge(df, self.ema, left_index=True, right_index=True, how='inner')
         self.all_df = self.preprocess(self.all_df)
+        self.feature_df = self.all_df
         self.label_df = self.all_df[[label_flag]].dropna().reset_index().drop_duplicates().set_index('index')
-        
+
     def preprocess(self, df):
 
         df.activityName = df.activityName.fillna('unknown').astype('category').cat.codes
@@ -64,6 +61,13 @@ class HuaweiDataset(Dataset):
                 full_day_df = pd.merge(full_day_df, grp_id_day, on='recordtime', how='left')
                 full_day_df['externalid'] = id
                 full_day_df['day'] = day
+
+                # 填充emotion和energy
+                emotion = full_day_df['emotion'].mode().values[0]
+                energy = full_day_df['energy'].mode().values[0]
+                full_day_df['emotion'] = full_day_df['emotion'].fillna(emotion)
+                full_day_df['energy'] = full_day_df['energy'].fillna(energy)
+                
                 df_list.append(full_day_df)
         
         df = pd.concat(df_list).set_index(['externalid', 'day'])
@@ -109,9 +113,9 @@ class HuaweiDataset(Dataset):
                                                  'avgOxygenSaturation', 'avgHeartRate']].fillna(0).values)
         label = self.label_df.loc[index][self.label_flag]
         if label < 3:
-            label = torch.from_numpy(np.array([0]))
+            label = torch.tensor([0])
         else:
-            label = torch.from_numpy(np.array([1]))
+            label = torch.tensor([1])
         return data, label
 
     def __len__(self):
