@@ -1,4 +1,5 @@
 import torch
+from sklearn.metrics import confusion_matrix
 from torch.utils.data import DataLoader, random_split
 from data_provider.data_loader import HuaweiDataset
 from models.DLinear import Model as DLinear
@@ -8,6 +9,7 @@ import argparse
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--model', type=str, default='DLinear')
+parser.add_argument('--label_flag', type=str, default='emotion')
 parser.add_argument('--d_model', type=int, default=64)
 parser.add_argument('--n_heads', type=int, default=4)
 parser.add_argument('--e_layers', type=int, default=2)
@@ -37,7 +39,7 @@ models = {
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Load the dataset
-dataset = HuaweiDataset(path="/home/user/suzhao/BehaviorDL/dataset/Huawei", label_flag='emotion')
+dataset = HuaweiDataset(path="/home/user/suzhao/BehaviorDL/dataset/Huawei", label_flag=config.label_flag)
 
 # Define the hyperparameters
 lr = 0.0001
@@ -54,6 +56,7 @@ val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
 
 # Initialize the model, criterion and optimizer
 print(f"Using {config.model} model")
+print(config)
 model = models[config.model](config).to(device)
 
 criterion = torch.nn.CrossEntropyLoss()
@@ -77,9 +80,13 @@ for epoch in range(epochs):
     print(f"Epoch {epoch+1}, Loss: {running_loss/len(train_loader)}")
 
 # Validation loop
+# Validation loop
 model.eval()
 correct = 0
 total = 0
+all_labels = []
+all_predictions = []
+
 with torch.no_grad():
     for data, labels in val_loader:
         data, labels = data.float().to(device), labels.long().to(device)
@@ -88,4 +95,14 @@ with torch.no_grad():
         total += labels.size(0)
         correct += (predicted == labels.squeeze()).sum().item()
 
+        # 收集标签和预测
+        all_labels.extend(labels.squeeze().cpu().numpy())
+        all_predictions.extend(predicted.cpu().numpy())
+
+# 计算准确率
 print(f"Validation Accuracy: {100 * correct / total}%")
+
+# 计算混淆矩阵
+cm = confusion_matrix(all_labels, all_predictions)
+print("混淆矩阵:")
+print(cm)
