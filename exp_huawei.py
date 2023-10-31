@@ -24,6 +24,10 @@ parser.add_argument('--hidden_dim', type=int, default=128)
 parser.add_argument('--output_dim', type=int, default=2)
 config = parser.parse_args()
 
+models = {
+    'DLinear': DLinear,
+    'PatchTST': PatchTST
+}
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -46,7 +50,7 @@ val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
 
 
 # Initialize the model, criterion and optimizer
-model = DLinear(config).to(device)
+model = models[config.model](config).to(device)
 
 criterion = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
