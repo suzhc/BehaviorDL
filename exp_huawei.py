@@ -22,7 +22,11 @@ parser.add_argument('--num_class', type=int, default=2)
 parser.add_argument('--num_features', type=int, default=4)
 parser.add_argument('--hidden_dim', type=int, default=128)
 parser.add_argument('--output_dim', type=int, default=2)
+
+parser.add_argument('--random_seed', type=int, default=42)
 config = parser.parse_args()
+
+torch.manual_seed(config.random_seed)
 
 models = {
     'DLinear': DLinear,
@@ -43,13 +47,13 @@ epochs = 5
 train_size = int(0.8 * len(dataset))
 val_size = len(dataset) - train_size
 train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
-
 # Create data loaders
 train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
 
 
 # Initialize the model, criterion and optimizer
+print(f"Using {config.model} model")
 model = models[config.model](config).to(device)
 
 criterion = torch.nn.CrossEntropyLoss()
