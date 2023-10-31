@@ -167,7 +167,7 @@ class Model(nn.Module):
                   (means[:, 0, :].unsqueeze(1).repeat(1, self.seq_len, 1))
         return dec_out
 
-    def forward(self, x_enc, x_mark_enc):
+    def forward(self, x_enc):
         # Normalization from Non-stationary Transformer
         means = x_enc.mean(1, keepdim=True).detach()
         x_enc = x_enc - means
