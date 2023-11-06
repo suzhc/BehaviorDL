@@ -2,6 +2,7 @@ import torch
 from sklearn.metrics import confusion_matrix
 from torch.utils.data import DataLoader, random_split
 from data_provider.data_loader import HuaweiDataset
+import numpy as np
 from models.DLinear import Model as DLinear
 from models.PatchTST import Model as PatchTST
 import argparse
@@ -39,18 +40,30 @@ models = {
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Load the dataset
-dataset = HuaweiDataset(path="/home/user/suzhao/BehaviorDL/dataset/Huawei", label_flag=config.label_flag)
+dataset = HuaweiDataset(path="/home/user/suzhao/BehaviorDL/dataset/Huawei", 
+                        label_flag=config.label_flag)
 
 # Define the hyperparameters
 lr = 0.0001
-epochs = 5
+epochs = 10
 
 # Split the dataset into training and validation sets
 train_size = int(0.8 * len(dataset))
 val_size = len(dataset) - train_size
 train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+
 # Create data loaders
-train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+def get_sampler(dataset):
+    weights = [1 if i == 0 else 9 for i in dataset]
+    sampler = torch.utils.data.WeightedRandomSampler(
+        weights=weights, 
+        num_samples=len(dataset),
+        replacement=True
+    )
+    return sampler
+
+train_loader = DataLoader(train_dataset, batch_size=64, 
+                          sampler=get_sampler(train_dataset))
 val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
 
 
@@ -79,7 +92,6 @@ for epoch in range(epochs):
     
     print(f"Epoch {epoch+1}, Loss: {running_loss/len(train_loader)}")
 
-# Validation loop
 # Validation loop
 model.eval()
 correct = 0
